@@ -1,7 +1,7 @@
 import { NextFunction, Response } from 'express';
 import { BaseController } from '../../../shared/base-controller';
 import { PostService } from '../types';
-import { CreatePostBody, GetPostDto } from './dto';
+import { CreatePostBody, GetPostDto, UpdatePostBody } from './dto';
 import responseValidationError from '../../../shared/response';
 import { HttpRequest } from '../../../types';
 
@@ -11,6 +11,22 @@ export class PostController extends BaseController {
   constructor(service: PostService) {
     super();
     this.service = service;
+  }
+  async updatePost(req: HttpRequest, res: Response, next: NextFunction): Promise<void> {
+    await this.execWithTryCatchBlock(req, res, next, async (req, res, _next) => {
+      const body = new UpdatePostBody(req.body);
+      const validateResult = await body.validate();
+      if (!validateResult.ok) {
+        responseValidationError(res, validateResult.errors[0]);
+        return;
+      }
+      const post = await this.service.updatePost(req.params.id, body);
+      res.status(200).json(post);
+      return;
+
+
+
+    })
   }
 
   async getPost(req: HttpRequest, res: Response, next: NextFunction): Promise<void> {

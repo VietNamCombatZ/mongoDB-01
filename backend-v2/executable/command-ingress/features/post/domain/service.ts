@@ -1,8 +1,30 @@
 import Post from '../../../../../internal/model/post';
 import User from '../../../../../internal/model/user';
-import { PostEntity, PostCreationDto, PostService } from '../types';
+import { PostEntity, PostCreationDto, PostService, PostUpdateDto } from '../types';
 
 export class PostServiceImpl implements PostService {
+  async updatePost(id: string, postUpdateDto: PostUpdateDto): Promise<PostEntity> {
+    const post = await Post.findOne({ _id: id });
+    if (!post) {
+      throw new Error('Post not found');
+    }
+    const updateResult = await Post.updateOne({ _id: id }, postUpdateDto);
+    if (!updateResult) {
+      throw new Error('Failed to update post');
+    }
+    return {
+      id: String(post._id),
+      image: String(post.image),
+      authorID: String(post.author),
+      markdown: post.markdown,
+      title: post.title,
+      tags: post.tags,
+      summary: post.summary,
+      createdAt: Number(post.createdAt),
+    }
+
+  }
+
   async getPost(id: string): Promise<PostEntity> {
     const post = await Post.findOne({ _id: id });
 
