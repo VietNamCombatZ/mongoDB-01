@@ -3,6 +3,20 @@ import User from '../../../../../internal/model/user';
 import { PostEntity, PostCreationDto, PostService, PostUpdateDto } from '../types';
 
 export class PostServiceImpl implements PostService {
+
+  async deletePost(id: string): Promise<boolean> {
+    const post = await Post.findOne({ _id: id });
+    if (!post) {
+      throw new Error('Post not found');
+    }
+    const deleteResult = await Post.deleteOne({ _id: id });
+    if (!deleteResult) {
+      throw new Error('Failed to delete post');
+    }
+    return true;
+  }
+
+
   async updatePost(id: string, postUpdateDto: PostUpdateDto): Promise<PostEntity> {
     const post = await Post.findOne({ _id: id });
     if (!post) {

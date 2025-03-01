@@ -32,6 +32,7 @@ interface PostService {
   fetchPostsByUser(id: string): Promise<PostEntity[]>;
   getPost(id: string): Promise<PostEntity>
   updatePost(id: string, postUpdateDto: PostUpdateDto): Promise<PostEntity>
+  deletePost(id: string): Promise<boolean>
 }
 
 export {

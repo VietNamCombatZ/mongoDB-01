@@ -1,6 +1,18 @@
 import { IsArray, IsOptional, IsString, Length } from 'class-validator';
 import { RequestDto } from '../../auth/adapter/dto';
 
+export class DeletePostDto extends RequestDto {
+  @Length(24)
+  id: string;
+
+  constructor(requestParams: any) {
+    super();
+    if (requestParams) {
+      this.id = requestParams.id;
+    }
+  }
+}
+
 export class UpdatePostBody extends RequestDto {
   @IsOptional()
   @IsString()
