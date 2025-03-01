@@ -52,6 +52,7 @@ export const getNotifications = asyncHandler(async (req, res, next) => {
 });
 
 export const getAllFollowers = asyncHandler(async (req, res, next) => {
+  
 
 });
 
