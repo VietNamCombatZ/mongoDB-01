@@ -7,6 +7,7 @@ import path from 'path';
 // import { MongoClient } from 'mongodb';
 
 export class UserServiceImpl implements UserService {
+  
   async getOne(id: string): Promise<UserEntity> {
     const user = await UserModel.findById(id);
     if(!user){
@@ -104,29 +105,47 @@ export class UserServiceImpl implements UserService {
     // }
   }
   async unfollowUser(sub: string, id: string): Promise<boolean> {
-    const user = await UserModel.findById(sub);
-    if(!user){
-      throw new Error('User not found');
+    const client = new MongoClient(env.MONGO_URI);
+    await client.connect();
+    const session = client.startSession();
+    const transactionOptions: TransactionOptions = {
+      readPreference: 'primary',
+      writeConcern: { w: 'majority' } // Remove readConcern or use ReadConcern instance
+    };
+    try{
+      await session.withTransaction(async () => {const user = await UserModel.findById(sub);
+        if(!user){
+          throw new Error('User not found');
+        }
+        const userToUnFollow = await UserModel.findById(id);
+        if(!userToUnFollow){
+          throw new Error('User to un follow not found');
+        }
+        if(!user.followings.includes(userToUnFollow._id)){
+          throw new Error('User already unfollowed');
+        }
+        if(user._id.equals(userToUnFollow._id)){
+          throw new Error('Cannot unfollow self');
+        }
+        const [unfollowResult, updateFollowerResult] = await Promise.all([
+          user.updateOne({ $pull: { followings: userToUnFollow._id } }),
+          userToUnFollow.updateOne({ $pull: { followers: user._id } }),
+      ]);
+    
+      if (!unfollowResult.modifiedCount || !updateFollowerResult.modifiedCount) {
+          throw new Error('Failed to unfollow user');
+      }
+        return true;
+      
+        }, transactionOptions);
+    }catch(e){
+      throw new Error('Error at follow user service');
+    }finally{
+      await session.endSession();
+      await client.close();
+      return true;
     }
-    const userToUnFollow = await UserModel.findById(id);
-    if(!userToUnFollow){
-      throw new Error('User to un follow not found');
-    }
-    if(!user.followings.includes(userToUnFollow._id)){
-      throw new Error('User already unfollowed');
-    }
-    if(user._id.equals(userToUnFollow._id)){
-      throw new Error('Cannot unfollow self');
-    }
-    const [unfollowResult, updateFollowerResult] = await Promise.all([
-      user.updateOne({ $pull: { followings: userToUnFollow._id } }),
-      userToUnFollow.updateOne({ $pull: { followers: user._id } }),
-  ]);
-
-  if (!unfollowResult.modifiedCount || !updateFollowerResult.modifiedCount) {
-      throw new Error('Failed to unfollow user');
-  }
-    return true;
+    
   }
 
 }
