@@ -17,7 +17,15 @@ export class PostServiceImpl implements PostService {
     });
 
     return {
-      // ...
+      id: String(existPost._id),
+      image: String(existPost.image),
+      authorID: String(existPost.author),
+      markdown: existPost.markdown,
+      title: existPost.title,
+      tags: existPost.tags,
+      summary: existPost.summary,
+      createdAt: Number(existPost
+        .createdAt),
     }
 
   }
