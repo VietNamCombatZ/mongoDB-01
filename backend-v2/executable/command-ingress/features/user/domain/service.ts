@@ -1,6 +1,10 @@
 import { UserEntity, UserService } from '../types';
+import { MongoClient, ClientSession, TransactionOptions, ReadConcern, WriteConcern } from 'mongodb';
+
 import UserModel from '../../../../../internal/model/user';
+import env from '../../../utils/env';
 import path from 'path';
+// import { MongoClient } from 'mongodb';
 
 export class UserServiceImpl implements UserService {
   async getOne(id: string): Promise<UserEntity> {
@@ -56,28 +60,48 @@ export class UserServiceImpl implements UserService {
     
   }
   async followUser(sub:string,id: string): Promise<boolean> {
-      const user = await UserModel.findById(sub);
-      if(!user){
-        throw new Error('User not found');
-      }
-      const userToFollow = await UserModel.findById(id);
-      if(!userToFollow){
-        throw new Error('User to follow not found');
-      }
-      if(user.followings.includes(userToFollow._id)){
-        throw new Error('User already followed');
-      }
-      if(user._id.equals(userToFollow._id)){
-        throw new Error('Cannot follow self');
-      }
-      user.followings.push(userToFollow._id);
-      userToFollow.followers.push(user._id);
-      try {
-        await Promise.all([user.save(), userToFollow.save()]);
-        return true;
-    } catch (error) {
-        throw new Error('Failed to follow user');
+    const client = new MongoClient(env.MONGO_URI);
+    await client.connect();
+    const session = client.startSession();
+    const transactionOptions: TransactionOptions = {
+      readPreference: 'primary',
+      writeConcern: { w: 'majority' } // Remove readConcern or use ReadConcern instance
+    };
+
+    try{
+      await session.withTransaction(async () => {const user = await UserModel.findById(sub);
+        if(!user){
+          throw new Error('User not found');
+        }
+        const userToFollow = await UserModel.findById(id);
+        if(!userToFollow){
+          throw new Error('User to follow not found');
+        }
+        if(user.followings.includes(userToFollow._id)){
+          throw new Error('User already followed');
+        }
+        if(user._id.equals(userToFollow._id)){
+          throw new Error('Cannot follow self');
+        }
+        user.followings.push(userToFollow._id);
+        userToFollow.followers.push(user._id);
+        await user.save();
+        await userToFollow.save();
+        }, transactionOptions);
+    }catch(e){
+      throw new Error('Error at follow user service');
+    }finally{
+      await session.endSession();
+      await client.close();
+      return true;
     }
+      
+    //   try {
+    //     await Promise.all([user.save(), userToFollow.save()]);
+    //     return true;
+    // } catch (error) {
+    //     throw new Error('Failed to follow user');
+    // }
   }
   async unfollowUser(sub: string, id: string): Promise<boolean> {
     const user = await UserModel.findById(sub);
